@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import subprocess
+import warnings
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -11,6 +12,8 @@ VERSION = "decision-bridge-1.1.1"
 SOURCE = "saga/common/contact_policy.py"
 ARCHIVE = "proofs/evidence/authz-stage1-20260916T123834944479Z/policy-matcher-sanity.json"
 MODEL = "proofs/proverif/agent_communication_authz_chat_turepass.pv"
+BINDING = "provenance/source_binding.json"
+SNAPSHOT = "provenance/historical_sources/contact_policy.py"
 IDENTITY = re.compile(r"[a-z0-9._+-]+@[a-z0-9.-]+:[a-z0-9._+-]+\Z")
 
 
@@ -36,7 +39,54 @@ def read(name):
 
 
 def git(*args):
-    return subprocess.check_output(["git", *args], cwd=ROOT)
+    return subprocess.check_output(["git", *args], cwd=ROOT, stderr=subprocess.PIPE)
+
+
+def git_blob_oid(blob):
+    """Compute the SHA-1 object name recorded by the historical Git repository."""
+    header = f"blob {len(blob)}\0".encode("ascii")
+    return hashlib.sha1(header + blob).hexdigest()
+
+
+def bundled_source_binding(commit, source_hash):
+    """Verify the publication-local frozen copy without using the current checkout."""
+    binding = read(BINDING)
+    frozen = binding.get("bundled_snapshot")
+    commits = binding.get("historical_commits")
+    if (binding.get("schema") != "saga-publication-source-binding-v1"
+            or binding.get("source_path") != SOURCE
+            or binding.get("archived_source_sha256") != source_hash
+            or not isinstance(frozen, dict) or frozen.get("path") != SNAPSHOT
+            or frozen.get("byte_encoding") != "uniform-CRLF"
+            or not isinstance(commits, list)
+            or binding.get("frozen_provenance_copy") is not True):
+        raise ValueError("Invalid bundled source-binding metadata")
+    matches = [item for item in commits if isinstance(item, dict) and item.get("commit") == commit]
+    if len(matches) != 1:
+        raise ValueError("Historical source revision unavailable in bundled binding")
+    historical = matches[0]
+    snapshot = relative_file(SNAPSHOT).read_bytes()
+    if digest(snapshot) != frozen.get("sha256") or digest(snapshot) != source_hash:
+        raise ValueError("Bundled provenance snapshot hash mismatch")
+    lf = snapshot.replace(b"\r\n", b"\n")
+    if b"\r" in lf or lf.replace(b"\n", b"\r\n") != snapshot:
+        raise ValueError("Bundled provenance snapshot has unexpected line endings")
+    if (digest(lf) != historical.get("git_blob_sha256")
+            or digest(lf) != historical.get("normalized_lf_sha256")
+            or git_blob_oid(lf) != historical.get("git_blob_oid_sha1")):
+        raise ValueError("Bundled provenance snapshot does not match Git blob metadata")
+    warnings.warn(
+        "bundled_snapshot_verification: historical Git object unavailable; "
+        "verified the frozen publication provenance snapshot",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    return {"source_commit": commit, "source_path": SOURCE,
+            "archived_source_byte_sha256": source_hash,
+            "historical_git_blob_sha256": historical["git_blob_sha256"],
+            "historical_normalized_lf_sha256": historical["normalized_lf_sha256"],
+            "verified_byte_encoding": frozen["byte_encoding"],
+            "historical_git_blob_matches_normalized_source": True}
 
 
 def budget_decision(budget):
@@ -107,13 +157,13 @@ def make_context(rules, aid, source_hash, source_commit, policy_id):
 
 
 def verify_historical_source(commit, source_hash):
-    """Bind to Git history, never to the current checkout. Only explicit EOL encodings."""
+    """Bind to Git history or its frozen publication copy, never the current checkout."""
     if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("Invalid source revision")
     try:
         blob = git("show", commit + ":" + SOURCE)
-    except subprocess.CalledProcessError as exc:
-        raise ValueError("Historical source revision unavailable") from exc
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return bundled_source_binding(commit, source_hash)
     lf = blob.replace(b"\r\n", b"\n")
     candidates = [("git-blob-raw", blob), ("uniform-LF", lf),
                   ("uniform-CRLF", lf.replace(b"\n", b"\r\n"))]

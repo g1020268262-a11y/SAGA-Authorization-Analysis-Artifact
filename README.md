@@ -1,17 +1,20 @@
 # SAGA Authorization Analysis Artifact
 
-This repository contains the research artifact for an analysis of an authorization decision inconsistency in SAGA.
+This repository is the publication/reproduction artifact. It supports an
+analysis of an authorization decision inconsistency in SAGA.
 
-Upstream project:
+Official upstream:
 https://github.com/gsiros/saga
 
-Upstream revision analyzed:
+Analyzed upstream baseline:
 7372111bea150e32cee390a616849316d2780bfc
 
 This is a derived research artifact, not the official SAGA repository. The
 production matcher comes from the pinned upstream revision. The analyzed
 production matcher is unchanged from the pinned upstream revision. The original
 license and attribution are preserved in [`LICENSE`](LICENSE).
+
+Historical execution metadata are preserved verbatim in archived manifests.
 
 ## Overview
 
@@ -60,6 +63,8 @@ implementation-to-model refinement proof.
   cases, and one representative successful archived run.
 - `proofs/evidence/`: representative matcher and formal-analysis archives,
   including raw ProVerif output, manifests, and summaries.
+- `provenance/`: publication-local frozen matcher source and its source-binding
+  metadata for provenance checks without external Git history.
 
 ## Requirements
 
@@ -72,22 +77,12 @@ implementation-to-model refinement proof.
 - A local `mongod` executable for consumer validation. The retained successful
   run used MongoDB 8.0.17. The harness starts an isolated loopback-only instance
   and never attaches to an existing database.
-- Git history containing the revisions named by the Decision Bridge observation
-  archives. The primary matcher observation is pinned to the original SAGA
-  revision `7372111bea150e32cee390a616849316d2780bfc`. The normal allow/deny
-  controls are pinned to `b5d0a6365d40fdeff240e54cce5ef7572f01808a`, a
-  historical commit from the development fork's `my-modification` branch. These
-  are different commits with the same matcher Git blob. In a fresh clone, fetch
-  and verify both sources with:
-
-  ```text
-  git remote add saga-upstream https://github.com/gsiros/saga.git
-  git remote add saga-development https://github.com/g1020268262-a11y/saga.git
-  git fetch saga-upstream main
-  git fetch saga-development my-modification
-  git cat-file -e 7372111bea150e32cee390a616849316d2780bfc:saga/common/contact_policy.py
-  git cat-file -e b5d0a6365d40fdeff240e54cce5ef7572f01808a:saga/common/contact_policy.py
-  ```
+- No external Git history is required for normal reproduction. When a historical
+  source revision is absent locally, the Decision Bridge verifies the frozen
+  source under `provenance/` against the archived source SHA-256 and recorded Git
+  blob metadata. The fallback is reported as
+  `bundled_snapshot_verification` and never substitutes the current checkout for
+  historical source.
 
 On Windows, the root `.gitattributes` keeps the frozen ProVerif template in LF
 form and preserves the exact LF/CRLF bytes bound by archived manifests. Do not
@@ -103,6 +98,37 @@ python -m venv .venv
 The root `requirements.txt` and `setup.py` describe the retained broader SAGA
 implementation. They are not required by the matcher-only or Decision Bridge
 checks.
+
+## Quick start
+
+Normal reproduction starts from this publication artifact alone:
+
+```text
+git clone https://github.com/g1020268262-a11y/SAGA-Authorization-Analysis-Artifact.git
+cd SAGA-Authorization-Analysis-Artifact
+python -B proofs/reproduce_matcher.py
+python -B -m unittest discover -s proofs/decision_bridge -p test_bridge.py -v
+<venv-python> -B -m unittest proofs.consumer_validation.test_harness -v
+proverif proofs/evidence/authz-bridge-turepass-20260922T111657792091Z/agent_communication_authz_chat_bridge.pv
+```
+
+The final command requires ProVerif 2.05. The preceding checks use only files in
+this repository after installing the documented consumer dependencies. The
+historical development repository is not required for normal artifact
+reproduction.
+
+### Optional historical cross-check
+
+If the two historical Git objects are already available in the local object
+database, the Decision Bridge verifies them directly before considering the
+bundled fallback:
+
+```text
+git cat-file -e 7372111bea150e32cee390a616849316d2780bfc:saga/common/contact_policy.py
+git cat-file -e b5d0a6365d40fdeff240e54cce5ef7572f01808a:saga/common/contact_policy.py
+```
+
+This optional cross-check is not part of the normal reproduction prerequisites.
 
 ## Reproduction
 
@@ -235,3 +261,6 @@ that existed when each run was captured; it should not be interpreted as a claim
 that every retained file belongs to the upstream revision. Declared publication
 redactions normalize machine-local paths and omit unrelated writing-file names;
 they do not alter query results, event traces, policy inputs, or decisions.
+The publication-local binding is documented in
+[`provenance/README.md`](provenance/README.md); it preserves provenance without
+rewriting historical manifests or observations.

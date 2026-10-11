@@ -1,0 +1,26 @@
+{
+  "schema": "saga-publication-source-binding-v1",
+  "source_path": "saga/common/contact_policy.py",
+  "archived_source_sha256": "2e37f59651acc31ed9fad8436462faabcb49c52ab3032eccd1529cd72870aa97",
+  "bundled_snapshot": {
+    "path": "provenance/historical_sources/contact_policy.py",
+    "sha256": "2e37f59651acc31ed9fad8436462faabcb49c52ab3032eccd1529cd72870aa97",
+    "byte_encoding": "uniform-CRLF"
+  },
+  "historical_commits": [
+    {
+      "commit": "7372111bea150e32cee390a616849316d2780bfc",
+      "git_blob_oid_sha1": "1a472ea3fc4a4c7cd41b62dda33c13513150c00b",
+      "git_blob_sha256": "c95b91e2d9bfa99d562423c4356e8e2532b202fe33e4d84da4b8059abe8e60b5",
+      "normalized_lf_sha256": "c95b91e2d9bfa99d562423c4356e8e2532b202fe33e4d84da4b8059abe8e60b5"
+    },
+    {
+      "commit": "b5d0a6365d40fdeff240e54cce5ef7572f01808a",
+      "git_blob_oid_sha1": "1a472ea3fc4a4c7cd41b62dda33c13513150c00b",
+      "git_blob_sha256": "c95b91e2d9bfa99d562423c4356e8e2532b202fe33e4d84da4b8059abe8e60b5",
+      "normalized_lf_sha256": "c95b91e2d9bfa99d562423c4356e8e2532b202fe33e4d84da4b8059abe8e60b5"
+    }
+  ],
+  "frozen_provenance_copy": true,
+  "statement": "This is a frozen provenance copy of the historical source, not a new execution."
+}

@@ -1,4 +1,5 @@
 /proofs/proverif/agent_communication_authz_chat_turepass.pv text eol=lf
+/provenance/historical_sources/contact_policy.py text eol=crlf whitespace=-trailing-space
 /proofs/decision_bridge/evidence/** -text
 /proofs/evidence/** -text
 /proofs/consumer_validation/evidence/** -text

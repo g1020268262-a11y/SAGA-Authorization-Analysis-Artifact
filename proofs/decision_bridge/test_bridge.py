@@ -2,6 +2,7 @@ import copy
 import unittest
 from unittest.mock import patch
 import json
+import subprocess
 from bridge import (ROOT, ARCHIVE, read, digest, make_context, build, evaluate,
                     generate, policy_hash, write_json, verify_historical_source, current_source_state, SOURCE, MODEL,
                     export_context_metadata)
@@ -144,6 +145,30 @@ class BridgeTests(unittest.TestCase):
     def test_missing_historical_commit(self):
         with self.assertRaises(ValueError):
             verify_historical_source("0" * 40, "0" * 64)
+
+    def test_bundled_snapshot_fallback(self):
+        context, _ = historical()
+        archived = read(
+            "proofs/evidence/authz-bridge-turepass-20260922T111657792091Z/bridge-result.json"
+        )["impl_observed"]["historical_source"]
+        unavailable = subprocess.CalledProcessError(128, ["git", "show"])
+        with patch("bridge.git", side_effect=unavailable):
+            with self.assertWarnsRegex(RuntimeWarning, "bundled_snapshot_verification"):
+                binding = verify_historical_source(context["source_commit"], context["source_sha256"])
+        self.assertEqual(binding, archived)
+
+    def test_bundled_snapshot_rejects_tampering(self):
+        context, _ = historical()
+        snapshot = (ROOT / "provenance/historical_sources/contact_policy.py").resolve()
+        real_read = Path.read_bytes
+
+        def changed(path):
+            return real_read(path) + b"tampered" if path.resolve() == snapshot else real_read(path)
+
+        unavailable = subprocess.CalledProcessError(128, ["git", "show"])
+        with patch("bridge.git", side_effect=unavailable), patch.object(Path, "read_bytes", changed):
+            with self.assertRaisesRegex(ValueError, "snapshot hash mismatch"):
+                verify_historical_source(context["source_commit"], context["source_sha256"])
 
     def test_wrong_historical_blob(self):
         context, _ = historical()

@@ -28,20 +28,13 @@ python -B -m unittest discover -s proofs/decision_bridge -p test_bridge.py -v
 <venv-python> -B -m unittest proofs.consumer_validation.test_harness -v
 ```
 
-Decision Bridge tests require local Git history containing the revisions bound
-by the archived observations: `7372111bea150e32cee390a616849316d2780bfc`
-from original SAGA and `b5d0a6365d40fdeff240e54cce5ef7572f01808a`
-from the development fork's `my-modification` branch. They are distinct commits
-with the same matcher Git blob. For a fresh clone, run:
-
-```text
-git remote add saga-upstream https://github.com/gsiros/saga.git
-git remote add saga-development https://github.com/g1020268262-a11y/saga.git
-git fetch saga-upstream main
-git fetch saga-development my-modification
-git cat-file -e 7372111bea150e32cee390a616849316d2780bfc:saga/common/contact_policy.py
-git cat-file -e b5d0a6365d40fdeff240e54cce5ef7572f01808a:saga/common/contact_policy.py
-```
+Decision Bridge tests are self-contained in a fresh clone. If the historical Git
+objects named by an observation are unavailable, the bridge verifies the frozen
+copy and binding under `../provenance/`. The binding covers the source path,
+archived source SHA-256, bundled snapshot SHA-256, Git blob SHA-256, and Git blob
+object name. Successful fallback use is explicitly reported as
+`bundled_snapshot_verification`; the current checkout is never treated as the
+historical source. External development-repository history is optional.
 
 The root `.gitattributes` fixes the frozen model to LF and preserves the exact
 archive-specific LF/CRLF bytes on Windows. Do not renormalize evidence. Consumer

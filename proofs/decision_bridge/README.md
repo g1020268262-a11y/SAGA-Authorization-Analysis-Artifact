@@ -22,27 +22,21 @@ The default replay uses:
 - the concrete ordered policy, initiator identity, symbolic receiver binding,
   source hash, and observation reference recorded in `input.json`.
 
-The local Git object database must contain the revisions named by the observation
-archives. The main counterexample uses original SAGA revision
-`7372111bea150e32cee390a616849316d2780bfc`; the normal allow/deny controls use
-`b5d0a6365d40fdeff240e54cce5ef7572f01808a` from the development fork's
-`my-modification` branch. They are distinct commits containing the same matcher
-Git blob. Fetch and verify both histories in a fresh clone:
+The main counterexample is bound to original SAGA revision
+`7372111bea150e32cee390a616849316d2780bfc`; the normal allow/deny controls are
+bound to `b5d0a6365d40fdeff240e54cce5ef7572f01808a`. Both commits record the same
+matcher Git blob. Historical Git objects are optional: when an object is
+available locally, the bridge verifies it directly; otherwise it verifies the
+publication-local frozen source and metadata in `../../provenance/` and reports
+`bundled_snapshot_verification`.
 
-```text
-git remote add saga-upstream https://github.com/gsiros/saga.git
-git remote add saga-development https://github.com/g1020268262-a11y/saga.git
-git fetch saga-upstream main
-git fetch saga-development my-modification
-git cat-file -e 7372111bea150e32cee390a616849316d2780bfc:saga/common/contact_policy.py
-git cat-file -e b5d0a6365d40fdeff240e54cce5ef7572f01808a:saga/common/contact_policy.py
-```
-
-The bridge checks each source blob against the archived source hash under
-explicitly enumerated raw, LF, and CRLF encodings and fails closed on missing or
-mismatched provenance. The root `.gitattributes` fixes the frozen model to LF
-and preserves the exact archive-specific LF/CRLF bytes on Windows; archived
-evidence must not be renormalized.
+Both paths check the source against the archived byte hash under explicit line
+ending rules. The bundled path additionally checks the frozen snapshot SHA-256,
+normalized Git blob SHA-256, and Git blob object name. It never reads the current
+checkout as historical source. The root `.gitattributes` fixes the frozen model
+to LF, preserves the provenance snapshot bytes, and preserves the exact
+archive-specific LF/CRLF bytes on Windows; archived evidence must not be
+renormalized. Normal reproduction requires no external repository or remote.
 
 ## Finite specification semantics
 
